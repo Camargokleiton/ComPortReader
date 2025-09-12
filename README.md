@@ -107,6 +107,7 @@ MIT License — use, copie e adapte como quiser, mas preserve os créditos.
 
 🖼️ Estrutura de pastas sugerida para portfólio
 RS232-to-Keyboard/
+RS232-to-Keyboard/
 │
 ├─ src/                  # Código-fonte
 ├─ docs/                 # GIF, imagens, screenshots
@@ -114,3 +115,4 @@ RS232-to-Keyboard/
 │   └─ demo.gif
 ├─ README.md
 └─ LICENSE
+
