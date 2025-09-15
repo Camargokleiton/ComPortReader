@@ -29,58 +29,74 @@
         private void InitializeComponent()
         {
             qco = new ComboBox();
-            lb1 = new Label();
             btnConnect = new Button();
             SuspendLayout();
             // 
             // qco
             // 
-            qco.Font = new Font("Segoe UI", 30F);
+            qco.DropDownStyle = ComboBoxStyle.DropDownList;
+            qco.FlatStyle = FlatStyle.System;
+            qco.Font = new Font("Roboto", 20.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            qco.ForeColor = SystemColors.MenuHighlight;
             qco.FormattingEnabled = true;
-            qco.Location = new Point(192, 136);
+            qco.ItemHeight = 33;
+            qco.Location = new Point(24, 55);
             qco.Name = "qco";
-            qco.Size = new Size(219, 62);
+            qco.Size = new Size(168, 41);
             qco.TabIndex = 0;
-            // 
-            // lb1
-            // 
-            lb1.AutoSize = true;
-            lb1.Font = new Font("Segoe UI", 30F);
-            lb1.Location = new Point(164, 69);
-            lb1.Name = "lb1";
-            lb1.Size = new Size(288, 54);
-            lb1.TabIndex = 1;
-            lb1.Text = "Escolha a Porta";
             // 
             // btnConnect
             // 
-            btnConnect.Font = new Font("Segoe UI", 20F);
-            btnConnect.Location = new Point(207, 208);
+            btnConnect.BackColor = Color.LightGray;
+            btnConnect.FlatStyle = FlatStyle.Popup;
+            btnConnect.Font = new Font("Roboto", 18F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            btnConnect.ForeColor = Color.White;
+            btnConnect.Location = new Point(198, 53);
             btnConnect.Name = "btnConnect";
-            btnConnect.Size = new Size(188, 59);
+            btnConnect.Size = new Size(168, 43);
             btnConnect.TabIndex = 2;
             btnConnect.Text = "Conectar";
-            btnConnect.UseVisualStyleBackColor = true;
+            btnConnect.UseVisualStyleBackColor = false;
             btnConnect.Click += btnConnect_Click;
             // 
             // Main
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(597, 309);
+            BackColor = SystemColors.ButtonHighlight;
+            ClientSize = new Size(378, 125);
             Controls.Add(btnConnect);
-            Controls.Add(lb1);
             Controls.Add(qco);
             Name = "Main";
-            Text = "Escolha a Porta";
+            ShowIcon = false;
+            FormClosing += Main_FormClosing;
+            this.Resize += Main_Resize;
             ResumeLayout(false);
-            PerformLayout();
+
+
+            //trayIcon
+
+            // Cria o menu da bandeja
+            trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add("Abrir", null, OnTrayOpen);
+            trayMenu.Items.Add("Sair", null, OnTrayExit);
+            trayIcon = new NotifyIcon();
+            trayIcon.Icon = SystemIcons.Application; 
+            trayIcon.ContextMenuStrip = trayMenu;    
+            trayIcon.DoubleClick += OnTrayOpen; 
+            trayIcon.Text = isConnected ? "Conectado" : "Desconectado";
+            trayIcon.Visible = true;
+            trayIcon.MouseMove += TrayIcon_MouseMove;
+
         }
 
         #endregion
 
         private ComboBox qco;
-        private Label lb1;
         private Button btnConnect;
+        private NotifyIcon trayIcon;
+        private ContextMenuStrip trayMenu;
+
+
     }
 }

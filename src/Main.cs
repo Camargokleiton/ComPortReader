@@ -1,17 +1,24 @@
 using RJCP.IO.Ports;
 using System;
 using System.Windows.Forms;
+using WindowsInput; // Instale via NuGet: InputSimulator
+using WindowsInput.Native;
 
 namespace ComPortReader
 {
     public partial class Main : Form
     {
         private SerialPortStream serialPort;
-
+        private InputSimulator sim;
+        private System.Threading.Thread readThread;
+        private volatile bool keepReading = false; 
+        private bool isConnected = false;
         public Main()
         {
             InitializeComponent();
 
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            sim = new InputSimulator();
             qco.Items.Clear();
             foreach (string s in System.IO.Ports.SerialPort.GetPortNames())
             {
@@ -19,6 +26,36 @@ namespace ComPortReader
             }
             if (qco.Items.Count > 0)
                 qco.SelectedIndex = 0;
+        }
+
+        private void btnConnect_Click(object sender, EventArgs e)
+        {
+            if (isConnected)
+                DiconnectFromSerialPort();
+            else
+                ConnectToSerialPort();
+            
+        }
+
+        private void DiconnectFromSerialPort()
+        {
+            keepReading = false;
+            if (serialPort != null)
+            {
+                if (serialPort.IsOpen)
+                    serialPort.Close();
+                serialPort.Dispose();
+                serialPort = null;
+            }
+            if (readThread != null && readThread.IsAlive)
+            {
+                readThread.Join(500); // espera até 500ms
+                readThread = null;
+            }
+            btnConnect.Text = "Conectar";
+            btnConnect.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            btnConnect.BackColor = System.Drawing.Color.LightGray;
+            isConnected = false;
         }
 
         private void ConnectToSerialPort()
@@ -30,32 +67,69 @@ namespace ComPortReader
                 return;
             }
 
-            try
+            int attempts = 0;
+
+            while (!isConnected && attempts < 3) 
             {
-                if (serialPort != null && serialPort.IsOpen)
+                try
                 {
-                    serialPort.Close();
+                    
+                    if (serialPort != null && serialPort.IsOpen)
+                    {
+                        keepReading = false;
+                        readThread?.Join(500);
+                        serialPort.Close();
+                        serialPort.Dispose();
+                        serialPort = null;
+                    }
+
+                    serialPort = new SerialPortStream(portName, 9600, 8, Parity.None, StopBits.One);
+                    serialPort.ReadTimeout = 1000; 
+                    serialPort.WriteTimeout = 1000; 
+                    serialPort.Open();
+
+                    ShowAutoCloseMessageBox(portName);
+                    keepReading = true;
+                    readThread = new System.Threading.Thread(ReadData);
+                    readThread.IsBackground = true;
+                    readThread.Start();
+
+                    btnConnect.Text = "Conectado";
+                    btnConnect.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+                    btnConnect.BackColor = System.Drawing.Color.LightGreen;
+                    isConnected = true;
+
+                    this.Hide();
+                    trayIcon.Visible = true;
+                    
+                    
+
                 }
-
-                serialPort = new SerialPortStream(portName, 9600, 8, Parity.None, StopBits.One);
-                serialPort.Open();
-
-                MessageBox.Show($"Conectado à porta {portName}.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                // Começa a ler dados em outra thread para não travar a UI
-                System.Threading.Thread readThread = new System.Threading.Thread(ReadData);
-                readThread.IsBackground = true;
-                readThread.Start();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Erro ao conectar: {ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                catch (Exception ex)
+                {
+                    attempts++;
+                    if (attempts >= 3)
+                    {
+                        isConnected = false;
+                        MessageBox.Show($"Erro ao conectar após {attempts} tentativas: {ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    else
+                    {
+                        System.Threading.Thread.Sleep(1000); 
+                    }
+                }
             }
         }
 
+
         private void ReadData()
         {
+            var encoding = System.Text.Encoding.GetEncoding("ISO-8859-1");
+
+
+
             byte[] buffer = new byte[1024];
+
             while (serialPort != null && serialPort.IsOpen)
             {
                 try
@@ -63,33 +137,99 @@ namespace ComPortReader
                     int bytesRead = serialPort.Read(buffer, 0, buffer.Length);
                     if (bytesRead > 0)
                     {
-                        string data = System.Text.Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                        this.Invoke((MethodInvoker)delegate
+                        string data = encoding.GetString(buffer, 0, bytesRead)
+                                  .Replace("\0", "")
+                                  .Trim();
+                        data = data.Trim();
+
+                        if (!string.IsNullOrEmpty(data))
                         {
-                            foreach (char c in data)
-                                SendKeys.SendWait(c.ToString());
-                        });
+                            this.Invoke((MethodInvoker)delegate
+                            {
+                                sim.Keyboard.TextEntry(data);
+                                sim.Keyboard.KeyPress(VirtualKeyCode.RETURN); // simula ENTER
+                            });
+                        }
                     }
                 }
-                catch
+                catch (TimeoutException)
                 {
-                    // Ignora erros de leitura temporários
+                    
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Erro na leitura: " + ex.Message);
                 }
             }
         }
 
-        private void btnConnect_Click(object sender, EventArgs e)
+        private void Main_FormClosing(object sender, FormClosingEventArgs e)
         {
-            ConnectToSerialPort();
+            OnFormClosing(e);
         }
+
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (serialPort != null && serialPort.IsOpen)
+           
+            keepReading = false;
+
+            if (serialPort != null)
             {
-                serialPort.Close();
+                if (serialPort.IsOpen)
+                    serialPort.Close();
+                serialPort.Dispose();
+                serialPort = null;
             }
-            base.OnFormClosing(e);
+
+            if (readThread != null && readThread.IsAlive)
+            {
+                readThread.Join(500); 
+                readThread = null;
+            }
+
         }
+
+        private void Main_Resize(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                this.Hide();
+                trayIcon.Visible = true;
+            }
+        }
+
+
+
+        private void OnTrayOpen(object sender, EventArgs e)
+        {
+            this.Show();
+            this.WindowState = FormWindowState.Normal;
+        }
+
+        private void OnTrayExit(object sender, EventArgs e)
+        {
+            trayIcon.Visible = false;
+            Application.Exit();
+        }
+
+        private void TrayIcon_MouseMove(object sender, EventArgs e)
+        {
+            trayIcon.Text = isConnected ? "Conectado à " + qco.SelectedItem?.ToString() : "Desconectado";
+        }
+
+        private void ShowAutoCloseMessageBox(string portName)
+        {
+            
+            Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                SendKeys.SendWait("{ENTER}"); 
+            });
+
+            MessageBox.Show($"Conectado à {portName}", "Sucesso");
+        }
+
+
     }
 }
