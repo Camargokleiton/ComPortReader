@@ -33,12 +33,16 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
-
+Name: "installDriver"; Description: "Instalar drivers do cabo RS232/USB"; GroupDescription: "Opções adicionais"; Flags: unchecked
 
 [Files]
+; App principal
 Source: "..\src\bin\Release\net9.0-windows\ComPortReader.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\src\bin\Release\net9.0-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\Drivers\*"; DestDir: "{tmp}\Drivers"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Drivers (sempre copiados para {tmp})
+Source: "Drivers\*"; DestDir: "{tmp}\Drivers"; Flags: ignoreversion recursesubdirs createallsubdirs
+
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -50,6 +54,9 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
 
 [Run]
-; Roda seu programa (já estava)
+; Roda o programa (padrão)
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-Filename: "{tmp}\Drivers\CH341SER.exe"; Parameters: "/silent"; StatusMsg: "Instalando driver do cabo..."; Flags: waituntilterminated runhidden
+
+; Instala drivers (só se task selecionada)
+Filename: "{tmp}\Drivers\CH341SER.exe"; Parameters: "/silent"; StatusMsg: "Instalando driver do cabo..."; Flags: waituntilterminated runhidden; Tasks: installDriver
+
