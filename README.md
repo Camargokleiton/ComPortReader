@@ -42,7 +42,7 @@ SendKeys	Simulação de teclado
 
 Clone o projeto:
 
-git clone https://github.com/seuusuario/RS232-to-Keyboard.git
+git clone https://github.com/seuusuario/ComPortReader.git
 
 
 Abra no Visual Studio.
